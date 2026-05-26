@@ -1,4 +1,8 @@
-"""Base tower class."""
+"""タワー基底クラス。
+
+派生クラス（炎・氷・雷・物理）は担当③が実装する。基底は射程内の敵を見つけ
+クールタイム経過ごとに弾を撃つ最小実装。
+"""
 
 from __future__ import annotations
 
@@ -6,27 +10,54 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pygame as pg
+import math
 
-from .constants import TOWER_BASE_DAMAGE, TOWER_BASE_RANGE
+import pygame as pg
+
+from .base_enemy import BaseEnemy
+from .bullet import Bullet
+from .constants import (
+    COLOR_TOWER,
+    TOWER_BASE_COOLDOWN,
+    TOWER_BASE_DAMAGE,
+    TOWER_BASE_RANGE,
+)
 
 
-@dataclass
 class BaseTower:
-    x: float = 0.0
-    y: float = 0.0
-    range: float = TOWER_BASE_RANGE
-    damage: int = TOWER_BASE_DAMAGE
-    fire_cooldown: float = 0.8
-    cooldown_left: float = 0.0
+    """タワー基底クラス。"""
+
+    DEFAULT_RADIUS: int = 16
+    RANGE_RING_ALPHA: int = 40
 
     image_name: str = "tower_physical.png"
     image_size: tuple[int, int] = (48, 48)
 
-    image: pg.Surface = field(init=False)
-    rect: pg.Rect = field(init=False)
+    def __init__(  # noqa: PLR0913
+        self,
+        pos: tuple[float, float] = (0.0, 0.0),
+        range_: float = TOWER_BASE_RANGE,
+        damage: int = TOWER_BASE_DAMAGE,
+        cooldown: float | None = None,
+        fire_cooldown: float | None = None,
+        purchase_cost: int = 0,
+    ) -> None:
+        if cooldown is None:
+            cooldown = (
+                fire_cooldown
+                if fire_cooldown is not None
+                else TOWER_BASE_COOLDOWN
+            )
 
-    def __post_init__(self) -> None:
-        """タワー画像を読み込んで初期化する。"""
+        self._pos: tuple[float, float] = pos
+        self._range: float = range_
+        self._damage: int = damage
+        self._cooldown: float = cooldown
+        self._last_shot_tick: float = -cooldown
+
+        self._level: int = 1
+        self._total_invested: int = max(0, int(purchase_cost))
+
         image = pg.image.load(
             Path("assets") / "fig" / self.image_name
         )
@@ -37,29 +68,144 @@ class BaseTower:
         )
 
         self.rect = self.image.get_rect(
-            center=(int(self.x), int(self.y))
+            center=(int(self._pos[0]), int(self._pos[1]))
         )
 
-    def update(self, dt: float) -> None:
-        """タワー状態を更新する。"""
-        self.cooldown_left = max(
-            0.0,
-            self.cooldown_left - dt
-        )
+    @property
+    def damage(self) -> int:
+        return self._damage
+
+    @damage.setter
+    def damage(self, value: int) -> None:
+        self.set_damage(value)
+
+    @property
+    def range(self) -> float:
+        return self._range
+
+    @range.setter
+    def range(self, value: float) -> None:
+        self.set_range(value)
+
+    @property
+    def cooldown(self) -> float:
+        return self._cooldown
+
+    @cooldown.setter
+    def cooldown(self, value: float) -> None:
+        self.set_cooldown(value)
+
+    @property
+    def fire_cooldown(self) -> float:
+        return self._cooldown
+
+    @fire_cooldown.setter
+    def fire_cooldown(self, value: float) -> None:
+        self.set_cooldown(value)
+
+    def get_pos(self) -> tuple[float, float]:
+        return self._pos
+
+    def set_pos(self, x: float, y: float) -> None:
+        self._pos = (x, y)
 
         self.rect.center = (
-            int(self.x),
-            int(self.y)
+            int(x),
+            int(y),
         )
 
-    def can_fire(self) -> bool:
-        """攻撃可能かを返す。"""
-        return self.cooldown_left <= 0.0
+    def get_range(self) -> float:
+        return self._range
 
-    def mark_fired(self) -> None:
-        """攻撃後のクールダウンを設定する。"""
-        self.cooldown_left = self.fire_cooldown
+    def set_range(self, value: float) -> None:
+        self._range = max(0.0, value)
+
+    def get_damage(self) -> int:
+        return self._damage
+
+    def set_damage(self, value: int) -> None:
+        self._damage = max(0, value)
+
+    def get_cooldown(self) -> float:
+        return self._cooldown
+
+    def set_cooldown(self, value: float) -> None:
+        self._cooldown = max(0.0, value)
+
+    def get_level(self) -> int:
+        return self._level
+
+    def set_level(self, value: int) -> None:
+        self._level = max(1, int(value))
+
+    def get_total_invested(self) -> int:
+        return self._total_invested
+
+    def add_invested(self, amount: int) -> None:
+        self._total_invested = max(
+            0,
+            self._total_invested + int(amount)
+        )
+
+    def find_target(
+        self,
+        enemies: list[BaseEnemy],
+    ) -> BaseEnemy | None:
+        tx, ty = self._pos
+
+        best: BaseEnemy | None = None
+        best_dist = self._range
+
+        for e in enemies:
+            if e.is_dead():
+                continue
+
+            ex, ey = e.get_pos()
+            d = math.hypot(ex - tx, ey - ty)
+
+            if d <= best_dist:
+                best = e
+                best_dist = d
+
+        return best
+
+    def attack(self, target: BaseEnemy) -> Bullet | None:
+        return Bullet(
+            pos=self._pos,
+            target=target,
+            damage=self._damage,
+        )
+
+    def update(
+        self,
+        enemies: list[BaseEnemy],
+        now: float | None = None,
+    ) -> list[Bullet]:
+        if now is None:
+            now = pg.time.get_ticks() / 1000.0
+
+        if now - self._last_shot_tick < self._cooldown:
+            return []
+
+        target = self.find_target(enemies)
+
+        if target is None:
+            return []
+
+        bullet = self.attack(target)
+
+        if bullet is None:
+            return []
+
+        self._last_shot_tick = now
+
+        return [bullet]
 
     def draw(self, screen: pg.Surface) -> None:
         """タワーを画像で描画する。"""
+        self.rect.center = (
+            int(self._pos[0]),
+            int(self._pos[1]),
+        )
+
         screen.blit(self.image, self.rect)

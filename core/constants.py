@@ -1,21 +1,236 @@
-"""Shared constants for the game."""
+"""全プロジェクトで共有する定数。
 
-SCREEN_WIDTH = 960
-SCREEN_HEIGHT = 540
-FPS = 60
+担当ごとに自分のセクションへ定数を追記する。マジックナンバーは原則として
+ここに集約する。
+"""
 
-SERVER_HOST = "127.0.0.1"
-SERVER_PORT = 50000
+# ===== 画面・描画（ベース） =====
+SCREEN_WIDTH: int = 1280
+SCREEN_HEIGHT: int = 720
+FPS: int = 60
 
-COLOR_BG = (18, 22, 28)
-COLOR_TEXT = (238, 238, 238)
-COLOR_PLAYER = (80, 180, 255)
-COLOR_ENEMY = (240, 90, 90)
-COLOR_TOWER = (100, 220, 150)
+# ===== 色 =====
+COLOR_BG: tuple[int, int, int] = (18, 22, 28)
+COLOR_TEXT: tuple[int, int, int] = (238, 238, 238)
+COLOR_WHITE: tuple[int, int, int] = (255, 255, 255)
+COLOR_BLACK: tuple[int, int, int] = (0, 0, 0)
+COLOR_PLAYER: tuple[int, int, int] = (80, 180, 255)
+COLOR_ENEMY: tuple[int, int, int] = (240, 90, 90)
+COLOR_TOWER: tuple[int, int, int] = (100, 220, 150)
+COLOR_FORTRESS: tuple[int, int, int] = (200, 200, 80)
+COLOR_BULLET: tuple[int, int, int] = (255, 220, 120)
+COLOR_HP_BAR_BG: tuple[int, int, int] = (60, 60, 60)
+COLOR_HP_BAR_FG: tuple[int, int, int] = (90, 220, 120)
 
-FORTRESS_MAX_HP = 100
-PLAYER_MAX_HP = 100
-ENEMY_BASE_HP = 30
-TOWER_BASE_RANGE = 140
-TOWER_BASE_DAMAGE = 8
-BULLET_SPEED = 360
+# ===== ゲームバランス（ベース） =====
+PLAYER_BUILDER_ID: int = 1
+PLAYER_FIGHTER_ID: int = 2
+INITIAL_GOLD: int = 100
+FORTRESS_MAX_HP: int = 1000
+FORTRESS_X_RATIO: float = 0.85
+FORTRESS_Y_RATIO: float = 0.5
+PLAYER_MAX_HP: int = 100
+ENEMY_BASE_HP: int = 30
+ENEMY_BASE_DAMAGE: int = 5
+ENEMY_BASE_REWARD: int = 1
+TOWER_BASE_RANGE: float = 140.0
+TOWER_BASE_DAMAGE: int = 8
+TOWER_BASE_COOLDOWN: float = 0.8
+BULLET_SPEED: float = 360.0
+
+# ===== ネットワーク（ベース） =====
+SERVER_HOST: str = "127.0.0.1"
+SERVER_PORT: int = 50000
+
+# ===== 進化AI（担当①） =====
+FITNESS_DAMAGE_WEIGHT: float = 10.0
+FITNESS_SURVIVAL_WEIGHT: float = 1.0
+FITNESS_DISTANCE_WEIGHT: float = 5.0
+EVOLUTION_MUTATION_RATE: float = 0.05
+EVOLUTION_ELITE_RATE: float = 0.2
+EVOLUTION_TOURNAMENT_SIZE: int = 3
+EARLY_GENERATION_THRESHOLD: int = 5  # この世代以下はNNを使わずタワー誘導で移動する
+
+# ===== ネットワーク（担当②） =====
+NET_STATE_HZ: int = 20  # ホスト→クライアントの状態ブロードキャスト周波数
+NET_INPUT_HZ: int = 30  # クライアント→ホストの操作送信周波数
+NET_PING_INTERVAL_SEC: float = 0.5  # ping を送る間隔（2Hz）
+NET_TIMEOUT_SEC: float = 5.0  # 最終受信からこの秒数経過で切断扱い
+NET_ACK_RESEND_INTERVAL_SEC: float = 0.5  # ACK 待ちタイムアウト→再送
+NET_ACK_MAX_RETRIES: int = 5  # ACK 再送の最大回数
+NET_RECV_BUFFER_BYTES: int = 4096  # recvfrom のバッファサイズ
+NET_RECV_TIMEOUT_SEC: float = 0.2  # 受信スレッドの select タイムアウト
+NET_CONNECT_TIMEOUT_SEC: float = 3.0  # connect_ok を待つ秒数
+# ホストが Player1、最初のクライアントが Player2
+NET_FIRST_CLIENT_PLAYER_ID: int = PLAYER_FIGHTER_ID
+
+# クライアント描画
+CLIENT_FONT_SIZE: int = 18
+CLIENT_DEFAULT_ENEMY_RADIUS: int = 10
+CLIENT_DEFAULT_TOWER_RADIUS: int = 16
+CLIENT_DEFAULT_PLAYER_RADIUS: int = 14
+CLIENT_DEFAULT_FORTRESS_RADIUS: int = 36
+CLIENT_DEFAULT_BULLET_RADIUS: int = 4
+CLIENT_HP_BAR_WIDTH: int = 220
+CLIENT_HP_BAR_HEIGHT: int = 12
+CLIENT_OVERLAY_X: int = 10
+CLIENT_OVERLAY_Y: int = 10
+CLIENT_OVERLAY_TEXT_X_GAP: int = 12
+CLIENT_OVERLAY_TEXT_Y_OFFSET: int = -1
+CLIENT_WAITING_TEXT_Y_OFFSET: int = -20
+CLIENT_CONNECTION_FAILED_TITLE_Y_OFFSET: int = -10
+CLIENT_CONNECTION_FAILED_HINT_Y_OFFSET: int = 14
+CLIENT_CONNECTION_FAIL_WAIT_SEC: float = 1.5
+CLIENT_WAIT_FPS: int = 30
+
+# ===== タワー属性（担当③） =====
+# 火炎タワー
+FIRE_DAMAGE: int = 10
+FIRE_RANGE: float = 130.0
+FIRE_COOLDOWN: float = 1.0
+FIRE_EXPLOSION_RADIUS: float = 50.0
+FIRE_EXPLOSION_FALLOFF: float = 0.6  # 中心から離れるほどダメージが下がる係数
+
+# 氷タワー
+ICE_DAMAGE: int = 5
+ICE_RANGE: float = 130.0
+ICE_COOLDOWN: float = 1.2
+ICE_SLOW_FACTOR: float = 0.5  # 速度を半分にする
+ICE_SLOW_DURATION: float = 3.0  # 3秒間
+
+# 雷タワー
+LIGHTNING_DAMAGE: int = 8
+LIGHTNING_RANGE: float = 150.0
+LIGHTNING_COOLDOWN: float = 0.6
+LIGHTNING_CHAIN_RADIUS: float = 90.0
+LIGHTNING_CHAIN_COUNT: int = 3  # 最大連鎖数（初撃含めて 3 体）
+LIGHTNING_CHAIN_FALLOFF: float = 0.8  # 連鎖ごとにダメージ係数
+LIGHTNING_VISUAL_DURATION: float = 0.2  # 稲妻ラインの表示秒数
+
+# 物理タワー
+PHYSICAL_DAMAGE: int = 22
+PHYSICAL_RANGE: float = 180.0
+PHYSICAL_COOLDOWN: float = 1.6
+PHYSICAL_PIERCE_RATIO: float = 0.5  # 残HP割合に応じて最大 +50% のダメージ
+
+# 色（属性別表示色）
+COLOR_FIRE: tuple[int, int, int] = (240, 110, 60)
+COLOR_ICE: tuple[int, int, int] = (110, 200, 240)
+COLOR_LIGHTNING: tuple[int, int, int] = (250, 230, 80)
+COLOR_PHYSICAL: tuple[int, int, int] = (200, 200, 200)
+
+# アップグレード（共通）
+TOWER_MAX_LEVEL: int = 3
+TOWER_UPGRADE_COST_PER_LEVEL: tuple[int, ...] = (0, 30, 50)  # Lv1→2 が 30、Lv2→3 が 50
+TOWER_UPGRADE_DAMAGE_BONUS: float = 0.4  # Lv ごとに +40%
+TOWER_UPGRADE_RANGE_BONUS: float = 0.15  # Lv ごとに +15%
+TOWER_UPGRADE_COOLDOWN_MULT: float = 0.85  # Lv ごとに ×0.85
+TOWER_SELL_REFUND_RATIO: float = 0.5  # 総投資額の 50% を返金
+
+# ===== 前線戦闘・演出（担当④） =====
+# 武器
+WEAPON_MELEE_DAMAGE: int = 14
+WEAPON_MELEE_RANGE: float = 60.0
+WEAPON_MELEE_COOLDOWN: float = 0.35
+WEAPON_RANGED_DAMAGE: int = 7
+WEAPON_RANGED_RANGE: float = 260.0
+WEAPON_RANGED_COOLDOWN: float = 0.25
+WEAPON_AREA_DAMAGE: int = 9
+WEAPON_AREA_RANGE: float = 180.0
+WEAPON_AREA_COOLDOWN: float = 0.9
+WEAPON_AREA_EXPLOSION_RADIUS: float = 45.0
+WEAPON_SWITCH_COOLDOWN: float = 0.2
+
+# スキル
+SKILL_DASH_COOLDOWN: float = 8.0
+SKILL_DASH_DISTANCE: float = 220.0
+SKILL_DASH_DURATION: float = 0.25
+SKILL_DASH_DAMAGE: int = 18
+SKILL_DASH_HIT_RADIUS: float = 30.0
+SKILL_AREA_COOLDOWN: float = 12.0
+SKILL_AREA_RADIUS: float = 110.0
+SKILL_AREA_DAMAGE: int = 14
+
+# ボス
+BOSS_HP_MULTIPLIER: int = 15  # 通常敵 HP の倍率
+BOSS_SPEED: float = 35.0
+BOSS_DAMAGE: int = 30
+BOSS_REWARD: int = 25
+BOSS_RADIUS: int = 26
+BOSS_SPECIAL_INTERVAL: float = 5.0  # 特殊行動（AOE）の発動間隔（秒）
+BOSS_SPECIAL_DAMAGE: int = 12
+BOSS_SPECIAL_RADIUS: float = 80.0
+BOSS_WAVE_MODULO: int = 5  # 5の倍数ウェーブでボス出現
+
+# 特殊敵
+FAST_ENEMY_HP: int = 12
+FAST_ENEMY_SPEED: float = 160.0
+FAST_ENEMY_DAMAGE: int = 4
+FAST_ENEMY_REWARD: int = 2
+SHIELDED_ENEMY_HP: int = 22
+SHIELDED_ENEMY_SHIELD: int = 30  # 盾HP（盾が割れるまでダメージ無効）
+SHIELDED_ENEMY_SPEED: float = 60.0
+SHIELDED_ENEMY_DAMAGE: int = 6
+SHIELDED_ENEMY_REWARD: int = 3
+SPECIAL_FAST_PROBABILITY: float = 0.2
+SPECIAL_SHIELDED_PROBABILITY: float = 0.1
+
+# エフェクト
+EFFECT_EXPLOSION_PARTICLES: int = 22
+EFFECT_HIT_PARTICLES: int = 8
+EFFECT_MUZZLE_PARTICLES: int = 6
+EFFECT_SHOCKWAVE_DURATION: float = 0.35
+COLOR_EFFECT_EXPLOSION: tuple[int, int, int] = (255, 180, 60)
+COLOR_EFFECT_HIT: tuple[int, int, int] = (255, 240, 200)
+COLOR_EFFECT_SHOCKWAVE: tuple[int, int, int] = (160, 200, 255)
+COLOR_EFFECT_BOSS_DEATH: tuple[int, int, int] = (255, 80, 80)
+COLOR_BOSS: tuple[int, int, int] = (200, 60, 200)
+COLOR_FAST: tuple[int, int, int] = (255, 230, 90)
+COLOR_SHIELDED: tuple[int, int, int] = (150, 180, 220)
+COLOR_SHIELD: tuple[int, int, int] = (90, 200, 240)
+
+# ===== 対戦・可視化・サウンド（担当⑤） =====
+# 進化グラフ
+EVOLUTION_GRAPH_DEFAULT_ORIGIN: tuple[int, int] = (10, 80)
+GRAPH_DEFAULT_WIDTH: int = 200
+GRAPH_DEFAULT_HEIGHT: int = 100
+GRAPH_MAX_GENERATIONS: int = 60  # 表示する直近世代数
+GRAPH_LINE_BEST: tuple[int, int, int] = (255, 200, 80)
+GRAPH_LINE_AVG: tuple[int, int, int] = (140, 200, 255)
+GRAPH_GRID_COLOR: tuple[int, int, int] = (60, 60, 70)
+GRAPH_BG_COLOR: tuple[int, int, int] = (12, 14, 20)
+
+# 詳細HUD
+HUD_PANEL_BG: tuple[int, int, int] = (24, 28, 36)
+HUD_PANEL_BORDER: tuple[int, int, int] = (90, 90, 100)
+HUD_OPPONENT_BAR_FG: tuple[int, int, int] = (240, 80, 80)
+
+# 対戦
+VERSUS_FIELD_GAP: int = 16  # 2フィールド間の余白
+VERSUS_SEND_COST: int = 25  # 敵送信のリソース消費
+VERSUS_SEND_KEY_PROMPT: str = "B"  # 敵送信メニューを開くキー（表示用）
+VERSUS_MAX_WAVE: int = 99  # 対戦中は時間制限なし扱い
+
+# サウンド
+SOUND_ASSET_DIR: str = "assets/sound"  # SE/BGM の検索先
+SOUND_DEFAULT_BGM_VOLUME: float = 0.5
+SOUND_DEFAULT_SE_VOLUME: float = 0.8
+SOUND_MIXER_FREQUENCY: int = 44100
+SOUND_MIXER_CHANNELS: int = 2
+
+# SE 名（音源ファイルは `assets/sound/<name>.wav` または .ogg）
+SE_TOWER_PLACE: str = "tower_place"
+SE_TOWER_FIRE: str = "tower_fire"
+SE_HIT: str = "hit"
+SE_ENEMY_DIE: str = "enemy_die"
+SE_WEAPON_FIRE: str = "weapon_fire"
+SE_SKILL_DASH: str = "skill_dash"
+SE_SKILL_AREA: str = "skill_area"
+SE_BOSS_SPECIAL: str = "boss_special"
+SE_BOSS_DIE: str = "boss_die"
+SE_WAVE_START: str = "wave_start"
+SE_WAVE_END: str = "wave_end"
+SE_VERSUS_SEND: str = "versus_send_enemy"
+SE_VICTORY: str = "victory"
+SE_DEFEAT: str = "defeat"
+BGM_MAIN: str = "bgm_main"  # `assets/sound/bgm_main.ogg` などを想定
